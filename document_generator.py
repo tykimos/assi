@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+#-*- encoding: utf-8 -*-
+
 # 필요한 패키지를 가져옵니다.
 
 import json
@@ -9,6 +14,8 @@ from PIL import Image, ImageFont, ImageDraw
 import pandas as pd
 import numpy as np
 from img2pdf import convert
+import csv
+import uuid
 
 fontpath = '/Library/Fonts/NanumBarunGothic.ttf'
 
@@ -19,136 +26,70 @@ wo_running_dir = "wo/running/"
 wo_success_dir = "wo/success/"
 wo_fail_dir = "wo/fail/"
 wo_warehouse_dir = 'wo/warehouse/'
+wo_temp_dir = 'wo/temp/'
+form_dir = 'form/'
 
-# 양식 및 콘텐츠 데이터를 로딩합니다.
-form_meta = pd.read_csv('form_meta.csv', skipinitialspace=True)
-contents = pd.read_csv('contents.csv', skipinitialspace=True, header=None)
-
-# 콘텐츠 정보로 양식 채워 이미지로 저장합니다.
-for c_idx, c_row in contents.iterrows():
-    form_img = Image.open('form.png')
-    draw_img = ImageDraw.Draw(form_img)
-
-    for fm_idx, fm_row in form_meta.iterrows():
-
-        x_pos = int(fm_row[1])
-        y_pos = int(fm_row[2])
-        font_size = int(fm_row[3] * 1.8)
-        str_text = str(c_row[fm_idx+1])
-
-        img_font = ImageFont.truetype(fontpath, font_size)
-        draw_img.text((x_pos, y_pos), str_text, fill='black', font=img_font)
-    
-    output_filename = c_row[0] + '_' + c_row[1] + '.pdf'
-    form_pdf = form_img.convert('RGB')
-    form_pdf.save(output_filename)
-
-'''
-{
-        "doc_type" : "contract",
-        "contract_name" : "연봉계약서",
-        "subject" : "홍길동",
-        "period" : "2022년 1월 1일/2022년 12월 30일/12개월",
-        "salary" : "50,000,000원",
-        "payment_date" : "15일",
-        "contract_date" : "2021년 12월 30일",
-        "signatories" : "김태영(tykim@aifactory.page), 홍길동(adam.tykim@gmail.com)"
-}
-'''
-
-def wo_from_json(filepath):
+def wo_from_json(wo_filename):
     wo = None
-    with open(filepath, "rt", encoding='utf-8') as json_file:
+    with open(wo_running_dir + wo_filename, "rt", encoding='utf-8') as json_file:
         wo = json.load(json_file)
     return wo
 
-def content_from_wo(wo):
+def content_from_wo(wo, wo_filename):
     
-    content = []
-    content.append('(주)인공지능팩토리')
-    content.append(wo["subject"])
+    contract_name = wo["contract_name"]
 
-    period = wo["period"].split('/')
+    wo_filepath = wo_running_dir + wo_filename
+    content_filepath = wo_temp_dir + wo_filename + '.with_content.csv'
 
-    content.append(period[0])
-    content.append(period[1])
-    content.append(period[2])
+    cmd = 'python ' + form_dir + contract_name + '.py ' + wo_filepath + ' ' + content_filepath
+    os.system(cmd)
 
-    content.append(wo["salary"])
-    content.append(wo["payment_date"])
-    content.append(wo["contract_date"])
+    cf = open(content_filepath, 'rt')
+    reader = csv.reader(cf, delimiter=',')
+    content = list(reader)
+    
+    return content[0]
 
-    signatories = wo["signatories"].split(',')
+def pdf_from_content(wo, content, pdf_filename):
+    
+    contract_name = wo["contract_name"]
 
+    # 양식 및 콘텐츠 데이터를 로딩합니다.
+    form_meta = pd.read_csv(form_dir + contract_name + '.csv', skipinitialspace=True)
+    form_img = Image.open(form_dir + contract_name + '.png')
+    
+    # 콘텐츠 정보로 양식 채워 이미지로 저장합니다.
+    draw_img = ImageDraw.Draw(form_img)
 
-    wo['doc_type']
-        "contract_name" : "연봉계약서",
-        "subject" : "홍길동",
-        "period" : "2022년 1월 1일/2022년 12월 30일/12개월",
-        "salary" : "50,000,000원",
-        "payment_date" : "15일",
-        "contract_date" : "2021년 12월 30일",
-        "signatories" : "김태영(tykim@aifactory.page), 홍길동(adam.tykim@gmail.com)"
+    for idx, row in form_meta.iterrows():
 
-        # with statement
-        with open(db_running_dir+filename, "rt", encoding='utf-8') as json_file:
+        x_pos = int(row[1])
+        y_pos = int(row[2]) + 3
+        font_size = int(row[3] * 1.8)
+        str_text = content[idx]
+        img_font = ImageFont.truetype(fontpath, font_size)
+        draw_img.text((x_pos, y_pos), str_text, fill='black', font=img_font)
 
-            json_data = json.load(json_file)
-
-            print(json_data)
-
-            db_text = json_data["text"]
-            db_from = json_data["from"]
-            db_time = json_data["time"]
-            db_name = json_data["name"]
-
-            if db_text.find('신한') >= 0 & db_text.find('6764'):
-                texts = db_text.split(' ')        
-
-                record = {}
-                record['user'] = 'tykim@aifactory.page'
-                record['time'] = db_time
-                record['type'] = texts[1]
-                record['card'] = texts[2]
-                record['amount'] = texts[5]
-                record['note'] = " ".join(texts[6:])
-
-                insert_card_sheet(record)
-                generate_slack_card_wo(record)
-            elif db_text.find('[개별공지]') >= 0:
-
-                record = {}
-                record['user'] = db_from
-                record['time'] = db_time
-                record['docname'] = db_text
-                record['filename'] = db_name
-
-                insert_doc_sheet(record)
-                upload_to_gdrive(db_name, db_warehouse_dir + db_name)
-                generate_slack_doc_wo(record)
-            else:
-                print('no match')
-
-    content =''
-    return content
-
-def pdf_from_content(content):
-    pass
+    form_pdf = form_img.convert('RGB')
+    form_pdf.save(wo_warehouse_dir + pdf_filename)
 
 def on_check_wo():
 
-    for filename in os.listdir(wo_wait_dir):
-        if filename.startswith('create_document'):
+    for wo_filename in os.listdir(wo_wait_dir):
+        if wo_filename.startswith('create_document'):
 
-            os.rename(wo_wait_dir+filename, wo_running_dir+filename)
-            print("move wo to running. ", filename)
+            os.rename(wo_wait_dir+wo_filename, wo_running_dir+wo_filename)
+            print("move wo to running. ", wo_filename)
 
-            wo = wo_from_json(wo_wait_dir + filename)
-            content = content_from_wo(wo)
-            pdf_from_content(content, wo['contract_name'])            
+            wo = wo_from_json(wo_filename)
+            content = content_from_wo(wo, wo_filename)
+
+            pdf_filename = uuid.uuid4().hex[:8] + '_' + wo["contract_name"] + '_' + wo["subject"] + '.pdf'
+            pdf_from_content(wo, content, pdf_filename)
             
-            os.rename(wo_running_dir+filename, wo_success_dir+filename)
-            print("move wo to success. ", filename)
+            os.rename(wo_running_dir+wo_filename, wo_success_dir+wo_filename)
+            print("move wo to success. ", wo_filename)
 
 def on_timer():
     print('check create document wo at ' + str(datetime.datetime.now()))

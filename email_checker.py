@@ -10,6 +10,7 @@ import os
 import json
 import datetime
 import threading
+import base64
 
 checking_period = 60*3
 wo_wait_dir = "wo/wait/"
@@ -79,6 +80,7 @@ def on_wo_received(msg_subject, message, timestamp):
 
     if message.is_multipart():
         for part in message.walk():
+            print(part)
             if part.get_content_type() == 'text/html':
                 text = part.get_payload()
                 text = html.unescape(text)
@@ -86,6 +88,9 @@ def on_wo_received(msg_subject, message, timestamp):
                 break
     else:
         content = message.get_payload()
+        enc = message['Content-Transfer-Encoding']
+        if enc == "base64":
+            content = base64.b64decode(content).decode('utf-8')
                 
     # wo 파일 저장
     with open(wo_wait_dir + wo_filename, 'wt') as fp:

@@ -131,3 +131,4 @@ email_account.json
 *.wo
 wo/.DS_Store
 .DS_Store
+*.pdf
