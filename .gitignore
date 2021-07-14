@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 email_account.json
+*.wo
+wo/.DS_Store
+.DS_Store

@@ -145,7 +145,7 @@ def message_proc(message):
     elif '[sign]' in msg_subject:
         on_sign_received(msg_from_name, msg_from_email, msg_subject, message, timestamp)
     
-def check_inbox():
+def on_check_inbox():
 
     # 이메일 계정 정보 json 파일 불러오기
     with open(email_account_file, "rt") as jsfp:
@@ -185,7 +185,7 @@ def check_inbox():
 
 def on_timer():
     print('check email wo at ' + str(datetime.datetime.now()))
-    check_inbox()
+    on_check_inbox()
     timer = threading.Timer(checking_period, on_timer)
     timer.start()
 
