@@ -33,6 +33,23 @@ the content of the email_account_file is as following:
 }
 '''
 
+def decode_with_charset(text):
+    
+    decoded_string, charset = email.header.decode_header(text)[0]
+
+    decoded_text = ''
+
+    if charset is not None:
+        try:
+            decoded_text = decoded_string.decode(charset)
+        except UnicodeDecodeError:
+            print("Cannot decode addr name " + decoded_string)
+    else:
+        decoded_text = decoded_string
+    
+    return decoded_text
+
+
 def parseaddr_unicode(addr):
 
     from_name, from_email = email.utils.parseaddr(addr)
@@ -40,16 +57,7 @@ def parseaddr_unicode(addr):
 
     if from_name:
         from_name = from_name.strip()
-        decoded_string, charset = email.header.decode_header(from_name)[0]
-
-        if charset is not None:
-            try:
-                from_name = decoded_string.decode(charset)
-            except UnicodeDecodeError:
-                print("Cannot decode addr name " + from_name)
-                from_name = ""
-        else:
-            from_name = decoded_string
+        from_name = decode_with_charset(from_name)
 
     return from_name, from_email 
 
@@ -100,11 +108,7 @@ def on_sign_received(msg_from_name, msg_from_email, msg_subject, message, timest
             if part.get('Content-Disposition') is None:
                 continue
             
-            decoded_attach_filename, charset = email.header.decode_header(part.get_filename())[0]
-
-            if charset is not None:
-                decoded_attach_filename = decoded_attach_filename.decode(charset)
-
+            decoded_attach_filename = decode_with_charset(part.get_filename())
             attach_filename = decoded_attach_filename + attach_filename_postfix
 
             # wo 파일 저장
@@ -128,14 +132,9 @@ def on_sign_received(msg_from_name, msg_from_email, msg_subject, message, timest
 
 def message_proc(message):
 
-    msg_from = message['from']
-    msg_subject = message['subject']
-
     # 메시지 디코딩
-    msg_from_name, msg_from_email = parseaddr_unicode(msg_from)
-    msg_subject, encode = email.header.decode_header(msg_subject)[0]
-    msg_subject = msg_subject.decode(encode)
-
+    msg_from_name, msg_from_email = parseaddr_unicode(message['from'])
+    msg_subject = decode_with_charset(message['subject'])
     print('MSG PROC : ' + msg_from_name + ',' + msg_from_email + ',' + msg_subject)
 
     # 메시지 처리
