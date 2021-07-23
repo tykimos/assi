@@ -92,7 +92,7 @@ def on_check_wo():
             print("move wo to success. ", wo_filename)
 
 def on_timer():
-    print('check create document wo at ' + str(datetime.datetime.now()))
+    print('check send slack wo at ' + str(datetime.datetime.now()))
     on_check_wo()
     timer = threading.Timer(checking_period, on_timer)
     timer.start()
